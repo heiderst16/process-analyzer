@@ -7,12 +7,19 @@ import $ from 'jquery';
 
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 
+import BpmnViewer from 'bpmn-js/lib/Viewer';
+
 // import diagramXML from '../resources/newDiagram.bpmn';
 
 var container = $('#js-drop-zone');
 
-var modeler = new BpmnModeler({
+/*var modeler = new BpmnModeler({
   container: '#js-canvas'
+});*/
+
+var viewer = new BpmnViewer({
+  container: $('#js-canvas'),
+  //height: 600
 });
 
 /*
@@ -24,7 +31,7 @@ async function openDiagram(xml) {
 
   try {
 
-    await modeler.importXML(xml);
+    await viewer.importXML(xml);
 
     container
       .removeClass('with-error')
@@ -72,6 +79,7 @@ function registerFileDrop(container, callback) {
 
   container.get(0).addEventListener('dragover', handleDragOver, false);
   container.get(0).addEventListener('drop', handleFileSelect, false);
+  
 }
 
 
@@ -89,7 +97,7 @@ if (!window.FileList || !window.FileReader) {
 // bootstrap diagram functions
 
 $(function() {
-/*
+  /*
   $('#js-create-diagram').click(function(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -105,7 +113,7 @@ $(function() {
       e.preventDefault();
       e.stopPropagation();
     }
-  });*/
+  });
 
   function setEncoded(link, name, data) {
     var encodedData = encodeURIComponent(data);
@@ -119,7 +127,7 @@ $(function() {
       link.removeClass('active');
     }
   }
-
+  
   var exportArtifacts = debounce(async function() {
 
     try {
@@ -145,12 +153,13 @@ $(function() {
   }, 500);
 
   modeler.on('commandStack.changed', exportArtifacts);
+  */
 });
 
 
 
 // helpers //////////////////////
-
+/*
 function debounce(fn, timeout) {
 
   var timer;
@@ -162,4 +171,4 @@ function debounce(fn, timeout) {
 
     timer = setTimeout(fn, timeout);
   };
-}
+}*/
