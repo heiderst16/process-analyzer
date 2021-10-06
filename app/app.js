@@ -7,7 +7,7 @@ import $ from 'jquery';
 
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 
-import diagramXML from '../resources/newDiagram.bpmn';
+// import diagramXML from '../resources/newDiagram.bpmn';
 
 var container = $('#js-drop-zone');
 
@@ -15,9 +15,10 @@ var modeler = new BpmnModeler({
   container: '#js-canvas'
 });
 
+/*
 function createNewDiagram() {
   openDiagram(diagramXML);
-}
+}*/
 
 async function openDiagram(xml) {
 
@@ -88,7 +89,7 @@ if (!window.FileList || !window.FileReader) {
 // bootstrap diagram functions
 
 $(function() {
-
+/*
   $('#js-create-diagram').click(function(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -104,7 +105,7 @@ $(function() {
       e.preventDefault();
       e.stopPropagation();
     }
-  });
+  });*/
 
   function setEncoded(link, name, data) {
     var encodedData = encodeURIComponent(data);
