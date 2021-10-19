@@ -9,6 +9,15 @@ import BpmnModeler from 'bpmn-js/lib/Modeler';
 
 import BpmnViewer from 'bpmn-js/lib/Viewer';
 
+
+/**
+ * 
+ * moddleeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+ * 
+ **/
+import BpmnModdle from 'bpmn-moddle';
+const moddle = new BpmnModdle();
+
 // import diagramXML from '../resources/newDiagram.bpmn';
 
 var container = $('#js-drop-zone');
@@ -46,6 +55,41 @@ async function openDiagram(xml) {
 
     console.error(err);
   }
+
+  /**
+   * 
+   * 
+   * 
+   * 
+   **/
+  /*
+  var elementRegistry = viewer.get('elementRegistry');
+  console.log(elementRegistry);
+  var objects = elementRegistry.filter(p => p.businessObject.type == 'Task')
+
+  //var sequenceFlowElement = elementRegistry.get('StartEvent_1');
+  //var sequenceFlowElement = elementRegistry.get('Task_18csy74');
+  //console.log(sequenceFlowElement.businessObject);
+  //console.log(sequenceFlowElement.businessObject.outgoing[0].id);
+
+  elementRegistry.forEach(element => {
+    var out = sequenceFlowElement.businessObject.outgoing;
+    console.log(out[0].id);
+    console.log(sequenceFlowElement.businessObject.incoming[0].id);
+    
+    //var nextElements = elementRegistry.filter(p => p.businessObject.incoming[0].id == out[0].id);
+    //console.log(nextElements);
+    //var sequenceFlowElement = nextElements.first;
+  });
+
+
+
+  /*var sequenceFlow = sequenceFlowElement.businessObject;
+  console.log(sequenceFlow);
+  console.log(sequenceFlow.outgoing);
+  console.log(sequenceFlow.incoming);
+  const bpmnProcess = moddle.fromXML(xml);
+  console.log(bpmnProcess);*/
 }
 
 function registerFileDrop(container, callback) {
@@ -60,7 +104,7 @@ function registerFileDrop(container, callback) {
 
     var reader = new FileReader();
 
-    reader.onload = function(e) {
+    reader.onload = function (e) {
 
       var xml = e.target.result;
 
@@ -79,7 +123,7 @@ function registerFileDrop(container, callback) {
 
   container.get(0).addEventListener('dragover', handleDragOver, false);
   container.get(0).addEventListener('drop', handleFileSelect, false);
-  
+
 }
 
 
@@ -96,7 +140,7 @@ if (!window.FileList || !window.FileReader) {
 
 // bootstrap diagram functions
 
-$(function() {
+$(function () {
   /*
   $('#js-create-diagram').click(function(e) {
     e.stopPropagation();
