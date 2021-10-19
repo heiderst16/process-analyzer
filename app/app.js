@@ -1,6 +1,9 @@
 /*
-  Part of this code was used from the following project:
+  Part of this code was used from the following projects:
+  bpmn-js:
   https://github.com/bpmn-io/bpmn-js-examples/tree/master/modeler
+  bpmn-engine:
+  https://github.com/paed01/bpmn-engine
 */
 
 import $ from 'jquery';
@@ -9,14 +12,19 @@ import BpmnModeler from 'bpmn-js/lib/Modeler';
 
 import BpmnViewer from 'bpmn-js/lib/Viewer';
 
+const { Engine } = require('bpmn-engine');
+const BpmnModdle = require('bpmn-moddle').default;
+const elements = require('bpmn-elements');
+const { default: Serializer, TypeResolver } = require('moddle-context-serializer');
+
 
 /**
  * 
- * moddleeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+ * MODDLE
  * 
  **/
-import BpmnModdle from 'bpmn-moddle';
-const moddle = new BpmnModdle();
+//import BpmnModdle from 'bpmn-moddle';
+//const moddle = new BpmnModdle();
 
 // import diagramXML from '../resources/newDiagram.bpmn';
 
@@ -56,9 +64,44 @@ async function openDiagram(xml) {
     console.error(err);
   }
 
+
   /**
    * 
+   * BPMN-ENGINE
+   * Notes: The Startevent of the BPMN-Process has to have the id "start"
    * 
+   */
+  (async function IIFE() {
+    const moddleContext = await (new BpmnModdle({
+      camunda: require('camunda-bpmn-moddle/resources/camunda.json'),
+    })).fromXML(xml);
+    //const moddleContext = moddle.fromXML(xml);
+
+    const sourceContext = Serializer(moddleContext, TypeResolver(elements));
+
+    const engine = Engine({
+      sourceContext,
+    });
+
+    const [definition] = await engine.getDefinitions();
+
+    const shakenStarts = definition.shake();
+
+    console.log(shakenStarts);
+
+    console.log('first sequence', shakenStarts.start[0].sequence.reduce(printSequence, ''));
+    //console.log('second sequence', shakenStarts.start[1].sequence.reduce(printSequence, ''));
+
+    function printSequence(res, s) {
+      if (!res) return s.id;
+      res += ' -> ' + s.id;
+      return res;
+    }
+  })();
+
+  /**
+   * 
+   * Debugging and Testing
    * 
    * 
    **/
