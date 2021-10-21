@@ -8,7 +8,7 @@
 
 import $ from 'jquery';
 
-import BpmnModeler from 'bpmn-js/lib/Modeler';
+//import BpmnModeler from 'bpmn-js/lib/Modeler';
 
 import BpmnViewer from 'bpmn-js/lib/Viewer';
 
@@ -89,7 +89,11 @@ async function openDiagram(xml) {
 
     console.log(shakenStarts);
 
-    console.log('first sequence', shakenStarts.start[0].sequence.reduce(printSequence, ''));
+    for (let i = 0; i < shakenStarts.start.length; i++) {
+      console.log(`sequence ${i}:`, shakenStarts.start[i].sequence.reduce(printSequence, ''));
+      console.log(shakenStarts.start[i].sequence);
+    }
+    //console.log('first sequence', shakenStarts.start[0].sequence.reduce(printSequence, ''));
     //console.log('second sequence', shakenStarts.start[1].sequence.reduce(printSequence, ''));
 
     function printSequence(res, s) {
