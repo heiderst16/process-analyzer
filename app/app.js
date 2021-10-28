@@ -77,6 +77,11 @@ async function openDiagram(xml) {
     })).fromXML(xml);
     //const moddleContext = moddle.fromXML(xml);
 
+    const elementRegistry = viewer.get('elementRegistry');
+    console.log(elementRegistry);
+    const businessElements = elementRegistry._elements;
+    console.log(businessElements);
+
     const sourceContext = Serializer(moddleContext, TypeResolver(elements));
 
     const engine = Engine({
@@ -89,12 +94,35 @@ async function openDiagram(xml) {
 
     console.log(shakenStarts);
 
-    for (let i = 0; i < shakenStarts.start.length; i++) {
+    /*for (let i = 0; i < shakenStarts.start.length; i++) {
       console.log(`sequence ${i}:`, shakenStarts.start[i].sequence.reduce(printSequence, ''));
       console.log(shakenStarts.start[i].sequence);
-    }
+    }*/
     //console.log('first sequence', shakenStarts.start[0].sequence.reduce(printSequence, ''));
     //console.log('second sequence', shakenStarts.start[1].sequence.reduce(printSequence, ''));
+
+    //console.log(shakenStarts.start);
+    const shakenStartsSequences = shakenStarts.start.map(e => e.sequence);
+    console.log(shakenStartsSequences);
+    const shakenStartsFiltered = shakenStartsSequences.map(e => e.filter(e => !e.type.includes("EndEvent") && !e.type.includes("StartEvent") && !e.type.includes("Task") && !e.type.includes("SequenceFlow")));
+    console.log(shakenStartsFiltered);
+
+    const convertedElements = shakenStartsFiltered.map(m => m.map(e => convertElements(e)));
+    console.log(convertedElements);
+
+
+    function convertElements(e) {
+      const fullElement = businessElements[e.id];
+      const incoming = fullElement.element.incoming.length;
+      const outgoing = fullElement.element.outgoing.length;
+
+      if(incoming == 1) {
+        return ({id:e.id, type:e.type, sm:"split", outgoing:outgoing});
+      } else {
+        return ({id:e.id, type:e.type, sm:"merge", incoming:incoming});
+      }
+    };
+    
 
     function printSequence(res, s) {
       if (!res) return s.id;
