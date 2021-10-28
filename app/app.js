@@ -78,8 +78,10 @@ async function openDiagram(xml) {
     //const moddleContext = moddle.fromXML(xml);
 
     const elementRegistry = viewer.get('elementRegistry');
-    console.log(elementRegistry);
+    //console.log("elementRegistry:");
+    //console.log(elementRegistry);
     const businessElements = elementRegistry._elements;
+    console.log("businessElements:");
     console.log(businessElements);
 
     const sourceContext = Serializer(moddleContext, TypeResolver(elements));
@@ -91,8 +93,8 @@ async function openDiagram(xml) {
     const [definition] = await engine.getDefinitions();
 
     const shakenStarts = definition.shake();
-
-    console.log(shakenStarts);
+    //console.log("shakenStarts:");
+    //console.log(shakenStarts);
 
     /*for (let i = 0; i < shakenStarts.start.length; i++) {
       console.log(`sequence ${i}:`, shakenStarts.start[i].sequence.reduce(printSequence, ''));
@@ -103,12 +105,19 @@ async function openDiagram(xml) {
 
     //console.log(shakenStarts.start);
     const shakenStartsSequences = shakenStarts.start.map(e => e.sequence);
+    console.log("shakenstartsSequences:");
     console.log(shakenStartsSequences);
     const shakenStartsFiltered = shakenStartsSequences.map(e => e.filter(e => !e.type.includes("EndEvent") && !e.type.includes("StartEvent") && !e.type.includes("Task") && !e.type.includes("SequenceFlow")));
+    console.log("shakenStartsFiltered:");
     console.log(shakenStartsFiltered);
 
     const convertedElements = shakenStartsFiltered.map(m => m.map(e => convertElements(e)));
+    console.log("convertedElements:");
     console.log(convertedElements);
+
+    const calculatedElements = calcuateUncertainty(convertedElements);
+    console.log("calculatedElements:");
+    console.log(calculatedElements);
 
 
     function convertElements(e) {
@@ -117,12 +126,56 @@ async function openDiagram(xml) {
       const outgoing = fullElement.element.outgoing.length;
 
       if(incoming == 1) {
-        return ({id:e.id, type:e.type, sm:"split", outgoing:outgoing});
+        return ({id:e.id, type:e.type, sm:"split", outgoing:outgoing, uncertainty:0});
       } else {
-        return ({id:e.id, type:e.type, sm:"merge", incoming:incoming});
+        return ({id:e.id, type:e.type, sm:"merge", incoming:incoming, uncertainty:0});
       }
     };
     
+    function calcuateUncertainty (listsOfElements) {
+
+      var calculatedList = listsOfElements;
+
+      for (let i = 0; i < listsOfElements.length; i++) {
+
+        const listOfElements = listsOfElements[i];
+
+        for (let j = 0; j < listOfElements.length; j++) {
+
+          if (checkIfSequence(listOfElements[j], listOfElements[j+1])) {
+
+            if (listOfElements[j].type.includes("ExclusiveGateway")) {
+
+              calculatedList[i][j].uncertainty = listOfElements[j].outgoing * 2345;
+
+            } else if (listOfElements[j].type.includes("ExclusiveGateway")) {
+
+              calculatedList[i][j].uncertainty = 0;
+            }
+          }
+        }
+      }
+      return(calculatedList);
+    }
+
+    function checkIfSequence (a, b) {
+      var check = 0;
+      for (let i = 0; i < convertedElements.length; i++) {
+        const elements = convertedElements[i];
+
+        for (let j = 0; j < elements.length; j++) {
+          console.log(elements);
+          if ((elements[j].id == a.id && elements[j+1].id != b.id) || !(a.sm == "split" && b.sm == "merge")) {
+            check += 1;
+          }
+        }
+      }
+      if(check == 0){
+        return(true);
+      } else {
+        return(false);
+      }
+    }
 
     function printSequence(res, s) {
       if (!res) return s.id;
