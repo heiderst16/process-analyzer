@@ -39,11 +39,6 @@ var viewer = new BpmnViewer({
   //height: 600
 });
 
-/*
-function createNewDiagram() {
-  openDiagram(diagramXML);
-}*/
-
 async function openDiagram(xml) {
 
   try {
@@ -75,7 +70,6 @@ async function openDiagram(xml) {
     const moddleContext = await (new BpmnModdle({
       camunda: require('camunda-bpmn-moddle/resources/camunda.json'),
     })).fromXML(xml);
-    //const moddleContext = moddle.fromXML(xml);
 
     const elementRegistry = viewer.get('elementRegistry');
     //console.log("elementRegistry:");
@@ -96,13 +90,6 @@ async function openDiagram(xml) {
     //console.log("shakenStarts:");
     //console.log(shakenStarts);
 
-    /*for (let i = 0; i < shakenStarts.start.length; i++) {
-      console.log(`sequence ${i}:`, shakenStarts.start[i].sequence.reduce(printSequence, ''));
-      console.log(shakenStarts.start[i].sequence);
-    }*/
-    //console.log('first sequence', shakenStarts.start[0].sequence.reduce(printSequence, ''));
-    //console.log('second sequence', shakenStarts.start[1].sequence.reduce(printSequence, ''));
-
     //console.log(shakenStarts.start);
     const shakenStartsSequences = shakenStarts.start.map(e => e.sequence);
     console.log("shakenstartsSequences:");
@@ -115,9 +102,9 @@ async function openDiagram(xml) {
     console.log("convertedElements:");
     console.log(convertedElements);
 
-    const calculatedElements = calcuateUncertainty(convertedElements);
-    console.log("calculatedElements:");
-    console.log(calculatedElements);
+    const pairedElements = pairElements(convertedElements);
+    console.log("pairedElements:");
+    console.log(pairedElements);
 
 
     function convertElements(e) {
@@ -125,99 +112,88 @@ async function openDiagram(xml) {
       const incoming = fullElement.element.incoming.length;
       const outgoing = fullElement.element.outgoing.length;
 
-      if(incoming == 1) {
-        return ({id:e.id, type:e.type, sm:"split", outgoing:outgoing, uncertainty:0});
+      if (incoming == 1) {
+        return ({ id: e.id, type: e.type, sm: "split", outgoing: outgoing, uncertainty: 1, paired: false, pairid:"" });
       } else {
-        return ({id:e.id, type:e.type, sm:"merge", incoming:incoming, uncertainty:0});
+        return ({ id: e.id, type: e.type, sm: "merge", incoming: incoming, uncertainty: 1, paired: false, pairid:"" });
       }
     };
-    
-    function calcuateUncertainty (listsOfElements) {
 
-      var calculatedList = listsOfElements;
+    function pairElements(listsOfElements) {
+      var pairedList = listsOfElements;
+      var unpairedElements = 1;
+      var counter = 0;
+      while (unpairedElements > 0 && counter < 1000) { //counter als absicherung damit kein endlosloop entsteht
 
-      for (let i = 0; i < listsOfElements.length; i++) {
+        var filteredUnpairedList = pairedList.map(e => e.filter(m => m.paired != true));
+        for (let i = 0; i < filteredUnpairedList.length; i++) {
+          const listOfElements = filteredUnpairedList[i];
+          for (let j = 0; j < listOfElements.length; j++) {
+            if (checkIfSequence(filteredUnpairedList, listOfElements[j], listOfElements[j + 1])) {
+              pairedList = setAttributes(pairedList, listOfElements[j], listOfElements[j + 1]);
+            }
+          }
+        }
 
-        const listOfElements = listsOfElements[i];
+        unpairedElements = 0;
+        for (let i = 0; i < filteredUnpairedList.length; i++) {
+          unpairedElements += filteredUnpairedList[i].length;
+          //console.log(filteredUnpairedList[i].length);
+        }
+        counter = counter + 1;
+        console.log(counter);
+      }
+      return (pairedList);
+    }
 
-        for (let j = 0; j < listOfElements.length; j++) {
+    function checkIfSequence(unpairedElements, a, b) {
+      var check = 0;
+      if (b != undefined) {
+        for (let i = 0; i < unpairedElements.length; i++) {
+          const elements = unpairedElements[i];
 
-          if (checkIfSequence(listOfElements[j], listOfElements[j+1])) {
+          for (let j = 0; j < elements.length; j++) {
+            //console.log(elements);
+            if ((elements[j].id == a.id && elements[j + 1].id != b.id) || !(a.sm == "split" && b.sm == "merge")) {
+              check += 1;
+            }
+          }
+        }
+      } else if (a.sm != "split" && b == undefined) {
+        check = 1;
+      }
+      if (check == 0) {
+        return (true);
+      } else {
+        return (false);
+      }
+    }
 
-            if (listOfElements[j].type.includes("ExclusiveGateway")) {
-
-              calculatedList[i][j].uncertainty = listOfElements[j].outgoing * 2345;
-
-            } else if (listOfElements[j].type.includes("ExclusiveGateway")) {
-
-              calculatedList[i][j].uncertainty = 0;
+    function setAttributes(elementArray, elem1, elem2) {
+      var id1 = elem1.id;
+      var newElementArray = elementArray;
+      if(elem2 != undefined){
+        var id2 = elem2.id;
+      }
+      for (let i = 0; i < elementArray.length; i++) {
+        for (let j = 0; j < elementArray[i].length; j++) {
+          if(elem2 != undefined){
+            if(elementArray[i][j].id == id1 || elementArray[i][j].id == id2) {
+              newElementArray[i][j].paired = true;
+              newElementArray[i][j].pairid = id1.concat(id2);
+            }
+          } else {
+            if(elementArray[i][j].id == id1) {
+              newElementArray[i][j].paired = true;
+              newElementArray[i][j].pairid = id1;
             }
           }
         }
       }
-      return(calculatedList);
+      return newElementArray;
     }
 
-    function checkIfSequence (a, b) {
-      var check = 0;
-      for (let i = 0; i < convertedElements.length; i++) {
-        const elements = convertedElements[i];
-
-        for (let j = 0; j < elements.length; j++) {
-          console.log(elements);
-          if ((elements[j].id == a.id && elements[j+1].id != b.id) || !(a.sm == "split" && b.sm == "merge")) {
-            check += 1;
-          }
-        }
-      }
-      if(check == 0){
-        return(true);
-      } else {
-        return(false);
-      }
-    }
-
-    function printSequence(res, s) {
-      if (!res) return s.id;
-      res += ' -> ' + s.id;
-      return res;
-    }
   })();
-
-  /**
-   * 
-   * Debugging and Testing
-   * 
-   * 
-   **/
-  /*
-  var elementRegistry = viewer.get('elementRegistry');
-  console.log(elementRegistry);
-  var objects = elementRegistry.filter(p => p.businessObject.type == 'Task')
-
-  //var sequenceFlowElement = elementRegistry.get('StartEvent_1');
-  //var sequenceFlowElement = elementRegistry.get('Task_18csy74');
-  //console.log(sequenceFlowElement.businessObject);
-  //console.log(sequenceFlowElement.businessObject.outgoing[0].id);
-
-  elementRegistry.forEach(element => {
-    var out = sequenceFlowElement.businessObject.outgoing;
-    console.log(out[0].id);
-    console.log(sequenceFlowElement.businessObject.incoming[0].id);
-    
-    //var nextElements = elementRegistry.filter(p => p.businessObject.incoming[0].id == out[0].id);
-    //console.log(nextElements);
-    //var sequenceFlowElement = nextElements.first;
-  });
-
-
-
-  /*var sequenceFlow = sequenceFlowElement.businessObject;
-  console.log(sequenceFlow);
-  console.log(sequenceFlow.outgoing);
-  console.log(sequenceFlow.incoming);
-  const bpmnProcess = moddle.fromXML(xml);
-  console.log(bpmnProcess);*/
 }
 
 function registerFileDrop(container, callback) {
@@ -266,81 +242,3 @@ if (!window.FileList || !window.FileReader) {
   registerFileDrop(container, openDiagram);
 }
 
-// bootstrap diagram functions
-
-$(function () {
-  /*
-  $('#js-create-diagram').click(function(e) {
-    e.stopPropagation();
-    e.preventDefault();
-
-    createNewDiagram();
-  });
-
-  var downloadLink = $('#js-download-diagram');
-  var downloadSvgLink = $('#js-download-svg');
-
-  $('.buttons a').click(function(e) {
-    if (!$(this).is('.active')) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
-
-  function setEncoded(link, name, data) {
-    var encodedData = encodeURIComponent(data);
-
-    if (data) {
-      link.addClass('active').attr({
-        'href': 'data:application/bpmn20-xml;charset=UTF-8,' + encodedData,
-        'download': name
-      });
-    } else {
-      link.removeClass('active');
-    }
-  }
-  
-  var exportArtifacts = debounce(async function() {
-
-    try {
-
-      const { svg } = await modeler.saveSVG();
-
-      setEncoded(downloadSvgLink, 'diagram.svg', svg);
-    } catch (err) {
-
-      console.error('Error happened saving svg: ', err);
-      setEncoded(downloadSvgLink, 'diagram.svg', null);
-    }
-
-    try {
-
-      const { xml } = await modeler.saveXML({ format: true });
-      setEncoded(downloadLink, 'diagram.bpmn', xml);
-    } catch (err) {
-
-      console.error('Error happened saving XML: ', err);
-      setEncoded(downloadLink, 'diagram.bpmn', null);
-    }
-  }, 500);
-
-  modeler.on('commandStack.changed', exportArtifacts);
-  */
-});
-
-
-
-// helpers //////////////////////
-/*
-function debounce(fn, timeout) {
-
-  var timer;
-
-  return function() {
-    if (timer) {
-      clearTimeout(timer);
-    }
-
-    timer = setTimeout(fn, timeout);
-  };
-}*/
