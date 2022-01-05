@@ -75,8 +75,8 @@ async function openDiagram(xml) {
     //console.log("elementRegistry:");
     //console.log(elementRegistry);
     const businessElements = elementRegistry._elements;
-    console.log("businessElements:");
-    console.log(businessElements);
+    //console.log("businessElements:");
+    //console.log(businessElements);
 
     const sourceContext = Serializer(moddleContext, TypeResolver(elements));
 
@@ -87,29 +87,36 @@ async function openDiagram(xml) {
     const [definition] = await engine.getDefinitions();
 
     const shakenStarts = definition.shake();
-    //console.log("shakenStarts:");
-    //console.log(shakenStarts);
+    console.log("shakenStarts:");
+    console.log(shakenStarts);
 
     //console.log(shakenStarts.start);
     const shakenStartsSequences = shakenStarts.start.map(e => e.sequence);
-    console.log("shakenstartsSequences:");
-    console.log(shakenStartsSequences);
+    //console.log("shakenstartsSequences:");
+    //console.log(shakenStartsSequences);
     const shakenStartsFiltered = shakenStartsSequences.map(e => e.filter(e => !e.type.includes("EndEvent") && !e.type.includes("StartEvent") && !e.type.includes("Task") && !e.type.includes("SequenceFlow")));
-    console.log("shakenStartsFiltered:");
-    console.log(shakenStartsFiltered);
+    //console.log("shakenStartsFiltered:");
+    //console.log(shakenStartsFiltered);
 
     const convertedElements = shakenStartsFiltered.map(m => m.map(e => convertElements(e)));
-    console.log("convertedElements:");
-    console.log(convertedElements);
+    //console.log("convertedElements:");
+    //console.log(convertedElements);
 
     const pairedElements = pairElements(convertedElements);
-    console.log("pairedElements:");
-    console.log(pairedElements);
+    //console.log("pairedElements:");
+    //console.log(pairedElements);
 
     const classifiedElements = classifyElements(pairedElements);
     console.log("classifiedElements:");
     console.log(classifiedElements);
 
+    const uncertainty = calculateUncertainty(classifiedElements);
+    changeLabel();
+
+    function changeLabel() {
+      let lbl = document.getElementById('calculatedUncertainty');
+      lbl.innerText = "The uncertainty of the business process: " + uncertainty;
+    }
 
     function convertElements(e) {
       const fullElement = businessElements[e.id];
@@ -117,9 +124,9 @@ async function openDiagram(xml) {
       const outgoing = fullElement.element.outgoing.length;
 
       if (incoming == 1 && outgoing > 1) {
-        return ({ id: e.id, type: e.type, sm: "split", outgoing: outgoing, uncertainty: 1, paired: false, pairid: "", isLoop: false, classification: "" });
+        return ({ id: e.id, type: e.type, sm: "split", outgoing: outgoing, uncertainty: 0, uncertaintyOfBranches: [], recordedBranches: [], removed: false, calculated: false, counter: 0, paired: false, pairid: "", isLoop: false, classification: "" });
       } else if (incoming > 1 && outgoing == 1) {
-        return ({ id: e.id, type: e.type, sm: "merge", incoming: incoming, uncertainty: 1, paired: false, pairid: "", isLoop: false, classification: "" });
+        return ({ id: e.id, type: e.type, sm: "merge", incoming: incoming, uncertainty: 0, uncertaintyOfBranches: [], recordedBranches: [], removed: false, calculated: false, counter: 0, paired: false, pairid: "", isLoop: false, classification: "" });
       }
     };
 
@@ -196,7 +203,7 @@ async function openDiagram(xml) {
           if (elem2 != undefined) {
             if (elementArray[i][j].id == id1 || elementArray[i][j].id == id2) {
               newElementArray[i][j].paired = true;
-              newElementArray[i][j].pairid = id1.concat(id2);
+              newElementArray[i][j].pairid = id1.concat("_").concat(id2);
             }
           } else {
             if (elementArray[i][j].id == id1) {
@@ -241,7 +248,7 @@ async function openDiagram(xml) {
         for (let j = 0; j < toclassifyArray[i].length; j++) {
           const classifyElem = toclassifyArray[i][j];
           if (classifyElem.isLoop) {
-            classifyElem.classification = "Loop";
+            classifyElem.classification = "LOOP";
           } else if (classifyElem.type.includes("Exclusive")) {
             classifyElem.classification = "XOR";
           } else if (classifyElem.type.includes("Parallel")) {
@@ -252,6 +259,243 @@ async function openDiagram(xml) {
         }
       }
       return toclassifyArray;
+    }
+
+    function calculateUncertainty(classifiedElements) {
+      var calculateArray = classifiedElements;
+      for (let m = 0; m < calculateArray.length; m++) {
+        for (let n = 0; n < calculateArray[m].length; n++) {
+
+          var filterCalculated = calculateArray.map(e => e.filter(m => m.calculated == false));
+          var filterRemoved = calculateArray.map(e => e.filter(m => m.removed == false));
+
+          for (let i = 0; i < filterCalculated.length; i++) {
+            for (let j = 0; j < filterCalculated[i].length; j++) {
+              if (filterCalculated[i][j + 1] != undefined &&
+                filterCalculated[i][j].pairid != filterCalculated[i][j + 1].pairid &&
+                filterCalculated[i][j].sm == "split" &&
+                filterCalculated[i][j].sm != "loop") {
+                for (let x = 0; x < calculateArray.length; x++) {
+                  for (let y = 0; y < calculateArray[x].length; y++) {
+                    if (filterCalculated[i][j].id == calculateArray[x][y].id) {
+                      /**
+                       * counter is increased if any of the branches is not calculated yet
+                       * this is necessary to check if a block can be calculated
+                       * if a branch of a block is not yet calculated, then the block cannot be calculated either
+                       */
+                      calculateArray[x][y].counter += 1;
+                    }
+                  }
+                }
+              } else if (filterCalculated[i][j].sm == "split" &&
+                filterCalculated[i][j].sm == "loop") {
+                for (let x = 0; x < filterCalculated.length; x++) {
+                  var filterPairID = filterCalculated[x].filter(m => m == calculateArray[i][j].pairid);
+                  if (filterPairID.length >= 3) {
+                    for (let y = 0; y < filterCalculated[x].length; y++) {
+                      if (filterCalculated[x][y + 1] == undefined &&
+                        (filterCalculated[x][y].pairid != filterCalculated[x][y - 1].pairid ||
+                          filterCalculated[x][y].pairid != filterCalculated[x][y - 2].pairid)) {
+                        calculateArray[x][y].counter += 1;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          for (let i = 0; i < calculateArray.length; i++) {
+            for (let j = 0; j < calculateArray[i].length; j++) {
+              if (calculateArray[i][j].counter == 0 &&
+                calculateArray[i][j + 1] != undefined &&
+                calculateArray[i][j].pairid != calculateArray[i][j + 1].pairid &&
+                !calculateArray[i][j].recordedBranches.includes(calculateArray[i][j + 1].id) &&
+                calculateArray[i][j].sm == "split" &&
+                calculateArray[i][j].classification != "LOOP") {
+                for (let x = 0; x < calculateArray.length; x++) {
+                  for (let y = 0; y < calculateArray[x].length; y++) {
+                    if (calculateArray[i][j].id == calculateArray[x][y].id) {
+                      calculateArray[x][y].uncertaintyOfBranches.push(calculateArray[i][j + 1].uncertainty);
+                      calculateArray[x][y].recordedBranches.push(calculateArray[i][j + 1].id);
+                    }
+                  }
+                }
+              } else if (/*calculateArray[i][j].counter == 0 &&*/
+                calculateArray[i][j].recordedBranches.length == 0 &&
+                calculateArray[i][j].sm == "split" &&
+                calculateArray[i][j].classification == "LOOP") {
+                for (let x = 0; x < filterRemoved.length; x++) {
+                  var pairidArray = filterRemoved[x].map(e => e.pairid);
+                  //console.log(pairidArray);
+                  //console.log(calculateArray[i][j].pairid);
+                  var filteredPairArray = pairidArray.filter(m => m == calculateArray[i][j].pairid);
+                  //console.log(filteredPairArray);
+                  if (filteredPairArray.length >= 3) {
+                    //console.log("i work fine");
+                    for (let y = 0; y < filterRemoved[x].length; y++) {
+                      if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                        //filterRemoved[x][y-1] != undefined &&
+                        filterRemoved[x][y - 1].pairid != filterRemoved[x][y].pairid &&
+                        filterRemoved[x][y - 2].pairid == filterRemoved[x][y].pairid &&
+                        !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(1)) {
+                        //calculateArray[i][j].recordedBranches.push(filterRemoved[x][y-1].id);
+                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y - 1].id, branch: 1, uncertainty: filterRemoved[x][y - 1].uncertainty });
+                        //console.log("loop branch getting pushed 1");
+                      } else if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                        //filterRemoved[x][y-1] != undefined &&
+                        filterRemoved[x][y - 1].pairid == filterRemoved[x][y].pairid &&
+                        !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(1)) {
+                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y - 1].id, branch: 1, uncertainty: 0 });
+                        //console.log("loop branch getting pushed 2");
+                      }
+                      if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                        //filterRemoved[x][y-1] != undefined &&
+                        filterRemoved[x][y + 1].pairid != filterRemoved[x][y].pairid &&
+                        filterRemoved[x][y + 2].pairid == filterRemoved[x][y].pairid &&
+                        !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(2)) {
+                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y + 1].id, branch: 2, uncertainty: filterRemoved[x][y + 1].uncertainty });
+                        //console.log("loop branch getting pushed 3");
+                      } else if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                        //filterRemoved[x][y-1] != undefined &&
+                        filterRemoved[x][y + 1].pairid == filterRemoved[x][y].pairid &&
+                        !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(2)) {
+                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y + 1].id, branch: 2, uncertainty: 0 });
+                        //console.log("loop branch getting pushed 4");
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          for (let i = 0; i < calculateArray.length; i++) {
+            for (let j = 0; j < calculateArray[i].length; j++) {
+              if (calculateArray[i][j].counter == 0 &&
+                calculateArray[i][j].removed == false &&
+                calculateArray[i][j].sm == "split" &&
+                calculateArray[i][j].calculated == false /*&&
+                calculateArray[i][j].classification != "LOOP"*/) {
+                if (calculateArray[i][j].classification == "XOR") {
+                  const uncertainty1 = -1 * calculateArray[i][j].outgoing * ((1 / calculateArray[i][j].outgoing) * Math.log2(1 / calculateArray[i][j].outgoing));
+                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (1 / calculateArray[i][j].outgoing));
+                  const uncertainty2 = weightedUncertaintyArray.reduce((prev, cur) => prev + cur, 0);
+                  for (let g = 0; g < calculateArray.length; g++) {
+                    for (let h = 0; h < calculateArray[g].length; h++) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                        calculateArray[g][h].removed = true;
+                      }
+                      if (calculateArray[i][j].id == calculateArray[g][h].id) {
+                        calculateArray[g][h].uncertainty = uncertainty1 + uncertainty2;
+                      }
+                    }
+                  }
+                } else if (calculateArray[i][j].classification == "OR") {
+                  const uncertainty1 = -1 * calculateArray[i][j].outgoing * (0.5 * Math.log2(0.5));
+                  const uncertainty2 = -1 * calculateArray[i][j].outgoing * ((1 - (0.5)) * Math.log2(1 - (0.5)));
+                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (0.5));
+                  const uncertainty3 = weightedUncertaintyArray.reduce((prev, cur) => prev + cur, 0);
+                  for (let g = 0; g < calculateArray.length; g++) {
+                    for (let h = 0; h < calculateArray[g].length; h++) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                        calculateArray[g][h].removed = true;
+                      }
+                      if (calculateArray[i][j].id == calculateArray[g][h].id) {
+                        calculateArray[g][h].uncertainty = uncertainty1 + uncertainty2 + uncertainty3;
+                      }
+                    }
+                  }
+                  //calculateArray[i][j].uncertainty = 2;
+                } else if (calculateArray[i][j].classification == "LOOP") {
+                  const uncertainty1 = -1 * (1 - Math.pow(0.5,10)) * ((0.5 * Math.log2(0.5)) / 0.5 + Math.log2(0.5));
+                  const uncertainty2 = ((1 - Math.pow(0.5,11)) / 0.5) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1);
+                  console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1));
+                  const uncertainty3 = ((0.5 - Math.pow(0.5,11)) / 0.5) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2);
+                  console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2));
+                  for (let g = 0; g < calculateArray.length; g++) {
+                    for (let h = 0; h < calculateArray[g].length; h++) {
+                      if (calculateArray[i][j].uncertaintyOfBranches.map(m => m.id).includes(calculateArray[g][h].id)) {
+                        calculateArray[g][h].removed = true;
+                      }
+                      if (calculateArray[i][j].id == calculateArray[g][h].id) {
+                        console.log(uncertainty1);
+                        console.log(uncertainty2);
+                        console.log(uncertainty3);
+                        calculateArray[g][h].uncertainty = uncertainty1 + uncertainty2 + uncertainty3;
+                      }
+                    }
+                  }
+                } else if (calculateArray[i][j].classification == "AND") {
+                  for (let g = 0; g < calculateArray.length; g++) {
+                    for (let h = 0; h < calculateArray[g].length; h++) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                        calculateArray[g][h].removed = true;
+                      }
+                      if (calculateArray[i][j].id == calculateArray[g][h].id) {
+                        calculateArray[g][h].uncertainty = calculateArray[i][j].uncertaintyOfBranches.reduce((prev, cur) => prev + cur, 0);
+                      }
+                    }
+                  }
+                }
+                for (let x = 0; x < calculateArray.length; x++) {
+                  for (let y = 0; y < calculateArray[x].length; y++) {
+                    if (calculateArray[x][y].pairid == calculateArray[i][j].pairid) {
+                      calculateArray[x][y].calculated = true;
+                    }
+                    if (calculateArray[x][y].id != calculateArray[i][j].id &&
+                      calculateArray[x][y].pairid == calculateArray[i][j].pairid &&
+                      calculateArray[i][j].removed != true) {
+                      calculateArray[x][y].removed = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          for (let i = 0; i < calculateArray.length; i++) {
+            for (let j = 0; j < calculateArray[i].length; j++) {
+              calculateArray[i][j].counter = 0;
+            }
+          }
+          for (let i = 0; i < filterRemoved.length; i++) {
+            for (let j = 0; j < filterRemoved[i].length; j++) {
+              if (filterRemoved[i][j + 1] != undefined &&
+                filterRemoved[i][j].calculated == true &&
+                filterRemoved[i][j].removed == false &&
+                filterRemoved[i][j + 1].calculated == true &&
+                filterRemoved[i][j + 1].removed == false &&
+                !filterRemoved[i][j].recordedBranches.includes(filterRemoved[i][j + 1].id)) {
+                for (let x = 0; x < calculateArray.length; x++) {
+                  for (let y = 0; y < calculateArray[x].length; y++) {
+                    if (calculateArray[x][y].id == filterRemoved[i][j].id) {
+                      calculateArray[x][y].uncertainty += filterRemoved[i][j + 1].uncertainty;
+                      //console.log(calculateArray[x][y].uncertainty);
+                      //console.log(filterRemoved[i][j + 1].uncertainty);
+                    }
+                    if (calculateArray[x][y].id == filterRemoved[i][j + 1].id) {
+                      calculateArray[x][y].removed = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      console.log(calculateArray);
+      const filteredArray = calculateArray.map(e => e.filter(m => m.removed == false));
+      const firstElement = filteredArray[0][0];
+      return firstElement.uncertainty;
+    }
+
+    function findUncertaintyOfBranch(array, branch) {
+      for (let i = 0; i < array.length; i++) {
+        if (array[i].branch == branch) {
+          return array[i].uncertainty;
+        }
+      }
+      return 0;
     }
 
   })();
