@@ -274,7 +274,7 @@ async function openDiagram(xml) {
               if (filterCalculated[i][j + 1] != undefined &&
                 filterCalculated[i][j].pairid != filterCalculated[i][j + 1].pairid &&
                 filterCalculated[i][j].sm == "split" &&
-                filterCalculated[i][j].sm != "loop") {
+                filterCalculated[i][j].classification != "LOOP") {
                 for (let x = 0; x < calculateArray.length; x++) {
                   for (let y = 0; y < calculateArray[x].length; y++) {
                     if (filterCalculated[i][j].id == calculateArray[x][y].id) {
@@ -288,15 +288,24 @@ async function openDiagram(xml) {
                   }
                 }
               } else if (filterCalculated[i][j].sm == "split" &&
-                filterCalculated[i][j].sm == "loop") {
+                filterCalculated[i][j].classification == "LOOP") {
+                //console.log('hello');
                 for (let x = 0; x < filterCalculated.length; x++) {
-                  var filterPairID = filterCalculated[x].filter(m => m == calculateArray[i][j].pairid);
+                  var filterPairID = filterCalculated[x].filter(m => m.pairid == calculateArray[i][j].pairid);
+                  //console.log(filterPairID);
                   if (filterPairID.length >= 3) {
+                    //console.log('ello');
                     for (let y = 0; y < filterCalculated[x].length; y++) {
-                      if (filterCalculated[x][y + 1] == undefined &&
-                        (filterCalculated[x][y].pairid != filterCalculated[x][y - 1].pairid ||
-                          filterCalculated[x][y].pairid != filterCalculated[x][y - 2].pairid)) {
-                        calculateArray[x][y].counter += 1;
+                      if (filterCalculated[x][y].id == calculateArray[i][j].id &&
+                        (filterCalculated[x][y + 1].pairid != filterCalculated[i][j].pairid ||
+                        filterCalculated[x][y - 1].pairid != filterCalculated[i][j].pairid)) {
+                        for (let t = 0; t < filterCalculated.length; t++) {
+                          for (let z = 0; z < filterCalculated[t].length; z++) {
+                            if(calculateArray[i][j].id == calculateArray[t][z].id){
+                              calculateArray[t][z].counter += 1;
+                            }
+                          }
+                        }
                       }
                     }
                   }
@@ -309,60 +318,138 @@ async function openDiagram(xml) {
             for (let j = 0; j < calculateArray[i].length; j++) {
               if (calculateArray[i][j].counter == 0 &&
                 calculateArray[i][j + 1] != undefined &&
-                calculateArray[i][j].pairid != calculateArray[i][j + 1].pairid &&
+                //calculateArray[i][j].pairid != calculateArray[i][j + 1].pairid &&
                 !calculateArray[i][j].recordedBranches.includes(calculateArray[i][j + 1].id) &&
                 calculateArray[i][j].sm == "split" &&
                 calculateArray[i][j].classification != "LOOP") {
+                for (let k = 0; k < shakenStartsSequences[i].length; k++) {
+                  if (shakenStartsSequences[i][k].id == calculateArray[i][j].id) {
+                    var id = shakenStartsSequences[i][k + 1].id;
+                    var probabilityArray = id.split('_');
+                    if (!isNaN(probabilityArray[1])) {
+                      var probability = Number(probabilityArray[1]);
+                    } else {
+                      var probability = 0.5;
+                    }
+                    //console.log(probabilityArray[1]);
+                  }
+                }
                 for (let x = 0; x < calculateArray.length; x++) {
                   for (let y = 0; y < calculateArray[x].length; y++) {
                     if (calculateArray[i][j].id == calculateArray[x][y].id) {
-                      calculateArray[x][y].uncertaintyOfBranches.push(calculateArray[i][j + 1].uncertainty);
-                      calculateArray[x][y].recordedBranches.push(calculateArray[i][j + 1].id);
+                      if (calculateArray[i][j].pairid != calculateArray[i][j + 1].pairid) {
+                        if (!calculateArray[x][y].uncertaintyOfBranches.map(e => e.id).includes(id)) {
+                          calculateArray[x][y].uncertaintyOfBranches.push({ id: id, uncertainty: calculateArray[i][j + 1].uncertainty, probability: probability });
+                        }
+                        calculateArray[x][y].recordedBranches.push(calculateArray[i][j + 1].pairid);
+                      } else if (calculateArray[i][j].pairid == calculateArray[i][j + 1].pairid) {
+                        if (!calculateArray[x][y].uncertaintyOfBranches.map(e => e.id).includes(id)) {
+                          calculateArray[x][y].uncertaintyOfBranches.push({ id: id, uncertainty: 0, probability: probability });
+                        }
+                      }
                     }
                   }
                 }
-              } else if (/*calculateArray[i][j].counter == 0 &&*/
+              } else if (calculateArray[i][j].counter == 0 &&
                 calculateArray[i][j].recordedBranches.length == 0 &&
                 calculateArray[i][j].sm == "split" &&
                 calculateArray[i][j].classification == "LOOP") {
-                for (let x = 0; x < filterRemoved.length; x++) {
-                  var pairidArray = filterRemoved[x].map(e => e.pairid);
-                  //console.log(pairidArray);
-                  //console.log(calculateArray[i][j].pairid);
-                  var filteredPairArray = pairidArray.filter(m => m == calculateArray[i][j].pairid);
-                  //console.log(filteredPairArray);
-                  if (filteredPairArray.length >= 3) {
-                    //console.log("i work fine");
-                    for (let y = 0; y < filterRemoved[x].length; y++) {
-                      if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                var pairidArray = filterRemoved[i].map(e => e.pairid);
+                //console.log(pairidArray);
+                //console.log(calculateArray[i][j].pairid);
+                var filteredPairArray = pairidArray.filter(m => m == calculateArray[i][j].pairid);
+                //console.log(filteredPairArray);
+                //var counter = 0;
+                if (filteredPairArray.length >= 3) {
+                  //console.log("i work fine");
+                  for (let y = 0; y < filterRemoved[i].length; y++) {
+                    if (filterRemoved[i][y].id == calculateArray[i][j].id) {
+                      //console.log('i work too')
+                      //if (!(counter > 0)) {
+                      //counter += 1;
+                      //console.log(filterRemoved);
+                      if (filterRemoved[i][y].id == calculateArray[i][j].id &&
                         //filterRemoved[x][y-1] != undefined &&
-                        filterRemoved[x][y - 1].pairid != filterRemoved[x][y].pairid &&
-                        filterRemoved[x][y - 2].pairid == filterRemoved[x][y].pairid &&
+                        filterRemoved[i][y - 1].pairid != filterRemoved[i][y].pairid &&
+                        filterRemoved[i][y - 2].pairid == filterRemoved[i][y].pairid &&
                         !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(1)) {
                         //calculateArray[i][j].recordedBranches.push(filterRemoved[x][y-1].id);
-                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y - 1].id, branch: 1, uncertainty: filterRemoved[x][y - 1].uncertainty });
+                        //console.log(shakenStartsSequences);
+                        //console.log('so do i');
+                        for (let f = 0; f < calculateArray.length; f++) {
+                          for (let g = 0; g < calculateArray[f].length; g++) {
+                            if (calculateArray[i][j].id == calculateArray[f][g].id) {
+                              calculateArray[f][g].uncertaintyOfBranches.push({ id: filterRemoved[i][y - 1].id, branch: 1, uncertainty: filterRemoved[i][y - 1].uncertainty });
+                            }
+                          }
+                        }
+                        //calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[i][y - 1].id, branch: 1, uncertainty: filterRemoved[i][y - 1].uncertainty });
                         //console.log("loop branch getting pushed 1");
-                      } else if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                      } else if (filterRemoved[i][y].id == calculateArray[i][j].id &&
                         //filterRemoved[x][y-1] != undefined &&
-                        filterRemoved[x][y - 1].pairid == filterRemoved[x][y].pairid &&
+                        filterRemoved[i][y - 1].pairid == filterRemoved[i][y].pairid &&
                         !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(1)) {
-                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y - 1].id, branch: 1, uncertainty: 0 });
+                        for (let f = 0; f < calculateArray.length; f++) {
+                          for (let g = 0; g < calculateArray[f].length; g++) {
+                            if (calculateArray[i][j].id == calculateArray[f][g].id) {
+                              calculateArray[f][g].uncertaintyOfBranches.push({ id: filterRemoved[i][y - 1].id, branch: 1, uncertainty: 0 });
+                            }
+                          }
+                        }
+                        //calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[i][y - 1].id, branch: 1, uncertainty: 0, probability: probabilityArray[1]  });
                         //console.log("loop branch getting pushed 2");
                       }
-                      if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                      if (filterRemoved[i][y].id == calculateArray[i][j].id &&
                         //filterRemoved[x][y-1] != undefined &&
-                        filterRemoved[x][y + 1].pairid != filterRemoved[x][y].pairid &&
-                        filterRemoved[x][y + 2].pairid == filterRemoved[x][y].pairid &&
+                        filterRemoved[i][y + 1].pairid != filterRemoved[i][y].pairid &&
+                        filterRemoved[i][y + 2].pairid == filterRemoved[i][y].pairid &&
                         !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(2)) {
-                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y + 1].id, branch: 2, uncertainty: filterRemoved[x][y + 1].uncertainty });
+                        for (let k = 0; k < shakenStartsSequences[i].length; k++) {
+                          if (shakenStartsSequences[i][k].id == calculateArray[i][j].id) {
+                            var probabilityArray = shakenStartsSequences[i][k + 1].id.split('_');
+                            if (!isNaN(probabilityArray[1])) {
+                              var probability = Number(probabilityArray[1]);
+                            } else {
+                              var probability = 0.5;
+                            }
+                            //console.log(probabilityArray[1]);
+                          }
+                        }
+                        for (let f = 0; f < calculateArray.length; f++) {
+                          for (let g = 0; g < calculateArray[f].length; g++) {
+                            if (calculateArray[i][j].id == calculateArray[f][g].id) {
+                              calculateArray[f][g].uncertaintyOfBranches.push({ id: filterRemoved[i][y + 1].id, branch: 2, uncertainty: filterRemoved[i][y + 1].uncertainty, probability: probability });
+                            }
+                          }
+                        }
+
                         //console.log("loop branch getting pushed 3");
-                      } else if (filterRemoved[x][y].id == calculateArray[i][j].id &&
+                      } else if (filterRemoved[i][y].id == calculateArray[i][j].id &&
                         //filterRemoved[x][y-1] != undefined &&
-                        filterRemoved[x][y + 1].pairid == filterRemoved[x][y].pairid &&
+                        filterRemoved[i][y + 1].pairid == filterRemoved[i][y].pairid &&
                         !calculateArray[i][j].uncertaintyOfBranches.map(e => e.branch).includes(2)) {
-                        calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[x][y + 1].id, branch: 2, uncertainty: 0 });
+                        for (let k = 0; k < shakenStartsSequences[i].length; k++) {
+                          if (shakenStartsSequences[i][k].id == calculateArray[i][j].id) {
+                            var probabilityArray = shakenStartsSequences[i][k + 1].id.split('_');
+                            if (!isNaN(probabilityArray[1])) {
+                              var probability = Number(probabilityArray[1]);
+                            } else {
+                              var probability = 0.5;
+                            }
+                            //console.log(probabilityArray[1]);
+                          }
+                        }
+                        for (let f = 0; f < calculateArray.length; f++) {
+                          for (let g = 0; g < calculateArray[f].length; g++) {
+                            if (calculateArray[i][j].id == calculateArray[f][g].id) {
+                              calculateArray[f][g].uncertaintyOfBranches.push({ id: filterRemoved[i][y + 1].id, branch: 2, uncertainty: 0, probability: probability });
+                            }
+                          }
+                        }
+                        //calculateArray[i][j].uncertaintyOfBranches.push({ id: filterRemoved[i][y + 1].id, branch: 2, uncertainty: 0, probability: probabilityArray[1]  });
                         //console.log("loop branch getting pushed 4");
                       }
+                      // }
                     }
                   }
                 }
@@ -378,12 +465,19 @@ async function openDiagram(xml) {
                 calculateArray[i][j].calculated == false /*&&
                 calculateArray[i][j].classification != "LOOP"*/) {
                 if (calculateArray[i][j].classification == "XOR") {
-                  const uncertainty1 = -1 * calculateArray[i][j].outgoing * ((1 / calculateArray[i][j].outgoing) * Math.log2(1 / calculateArray[i][j].outgoing));
-                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (1 / calculateArray[i][j].outgoing));
+                  const probabilityArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e.probability);
+                  //console.log(probabilityArray);
+                  const calculatedProbabilityArray = probabilityArray.map(e => e * Math.log2(e));
+                  //console.log(calculatedProbabilityArray);
+                  const uncertainty1 = -1 * calculatedProbabilityArray.reduce((prev, cur) => prev + cur, 0);
+                  //console.log(uncertainty1);
+                  //const uncertainty1 = -1 * calculateArray[i][j].outgoing * ((1 / calculateArray[i][j].outgoing) * Math.log2(1 / calculateArray[i][j].outgoing));
+                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e.uncertainty * e.probability);
+                  //const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (1 / calculateArray[i][j].outgoing));
                   const uncertainty2 = weightedUncertaintyArray.reduce((prev, cur) => prev + cur, 0);
                   for (let g = 0; g < calculateArray.length; g++) {
                     for (let h = 0; h < calculateArray[g].length; h++) {
-                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].pairid)) {
                         calculateArray[g][h].removed = true;
                       }
                       if (calculateArray[i][j].id == calculateArray[g][h].id) {
@@ -392,36 +486,47 @@ async function openDiagram(xml) {
                     }
                   }
                 } else if (calculateArray[i][j].classification == "OR") {
-                  const uncertainty1 = -1 * calculateArray[i][j].outgoing * (0.5 * Math.log2(0.5));
-                  const uncertainty2 = -1 * calculateArray[i][j].outgoing * ((1 - (0.5)) * Math.log2(1 - (0.5)));
-                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (0.5));
+                  const probabilityArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e.probability);
+                  const calculatedProbabilityArray1 = probabilityArray.map(e => e * Math.log2(e));
+                  const calculatedProbabilityArray2 = probabilityArray.map(e => (1 - e) * Math.log2((1 - e)));
+                  const uncertainty1 = -1 * calculatedProbabilityArray1.reduce((prev, cur) => prev + cur, 0);
+                  const uncertainty2 = -1 * calculatedProbabilityArray2.reduce((prev, cur) => prev + cur, 0);
+                  //const uncertainty1 = -1 * calculateArray[i][j].outgoing * (0.5 * Math.log2(0.5));
+                  //const uncertainty2 = -1 * calculateArray[i][j].outgoing * ((1 - (0.5)) * Math.log2(1 - (0.5)));
+                  const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e.uncertainty * e.probability);
+                  //const weightedUncertaintyArray = calculateArray[i][j].uncertaintyOfBranches.map(e => e * (0.5));
                   const uncertainty3 = weightedUncertaintyArray.reduce((prev, cur) => prev + cur, 0);
                   for (let g = 0; g < calculateArray.length; g++) {
                     for (let h = 0; h < calculateArray[g].length; h++) {
-                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].pairid)) {
                         calculateArray[g][h].removed = true;
                       }
                       if (calculateArray[i][j].id == calculateArray[g][h].id) {
                         calculateArray[g][h].uncertainty = uncertainty1 + uncertainty2 + uncertainty3;
+                        //console.log(uncertainty1);
+                        //console.log(uncertainty2);
+                        //console.log(uncertainty3);
                       }
                     }
                   }
                   //calculateArray[i][j].uncertainty = 2;
                 } else if (calculateArray[i][j].classification == "LOOP") {
-                  const uncertainty1 = -1 * (1 - Math.pow(0.5,10)) * ((0.5 * Math.log2(0.5)) / 0.5 + Math.log2(0.5));
-                  const uncertainty2 = ((1 - Math.pow(0.5,11)) / 0.5) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1);
-                  console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1));
-                  const uncertainty3 = ((0.5 - Math.pow(0.5,11)) / 0.5) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2);
-                  console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2));
+                  const loopProbability = findLoopProbability(calculateArray[i][j].uncertaintyOfBranches);
+                  //console.log(loopProbability);
+                  const uncertainty1 = -1 * (1 - Math.pow(loopProbability, 10)) * ((loopProbability * Math.log2(loopProbability)) / (1 - loopProbability) + Math.log2((1 - loopProbability)));
+                  const uncertainty2 = ((1 - Math.pow(loopProbability, 11)) / (1 - loopProbability)) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1);
+                  //console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 1));
+                  const uncertainty3 = ((loopProbability - Math.pow(loopProbability, 11)) / (1 - loopProbability)) * findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2);
+                  //console.log(findUncertaintyOfBranch(calculateArray[i][j].uncertaintyOfBranches, 2));
                   for (let g = 0; g < calculateArray.length; g++) {
                     for (let h = 0; h < calculateArray[g].length; h++) {
                       if (calculateArray[i][j].uncertaintyOfBranches.map(m => m.id).includes(calculateArray[g][h].id)) {
                         calculateArray[g][h].removed = true;
                       }
-                      if (calculateArray[i][j].id == calculateArray[g][h].id) {
-                        console.log(uncertainty1);
-                        console.log(uncertainty2);
-                        console.log(uncertainty3);
+                      if (calculateArray[i][j].pairid == calculateArray[g][h].pairid) {
+                        //console.log(uncertainty1);
+                        //console.log(uncertainty2);
+                        //console.log(uncertainty3);
                         calculateArray[g][h].uncertainty = uncertainty1 + uncertainty2 + uncertainty3;
                       }
                     }
@@ -429,11 +534,11 @@ async function openDiagram(xml) {
                 } else if (calculateArray[i][j].classification == "AND") {
                   for (let g = 0; g < calculateArray.length; g++) {
                     for (let h = 0; h < calculateArray[g].length; h++) {
-                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].id)) {
+                      if (calculateArray[i][j].recordedBranches.includes(calculateArray[g][h].pairid)) {
                         calculateArray[g][h].removed = true;
                       }
                       if (calculateArray[i][j].id == calculateArray[g][h].id) {
-                        calculateArray[g][h].uncertainty = calculateArray[i][j].uncertaintyOfBranches.reduce((prev, cur) => prev + cur, 0);
+                        calculateArray[g][h].uncertainty = calculateArray[i][j].uncertaintyOfBranches.map(e => e.uncertainty).reduce((prev, cur) => prev + cur, 0);
                       }
                     }
                   }
@@ -484,9 +589,11 @@ async function openDiagram(xml) {
         }
       }
       console.log(calculateArray);
+      console.log(filterRemoved);
       const filteredArray = calculateArray.map(e => e.filter(m => m.removed == false));
-      const firstElement = filteredArray[0][0];
-      return firstElement.uncertainty;
+      const totalUncertainty = filteredArray[0].map(e => e.uncertainty).reduce((prev, cur) => prev + cur, 0);
+      //const firstElement = filteredArray[0][0];
+      return totalUncertainty;
     }
 
     function findUncertaintyOfBranch(array, branch) {
@@ -496,6 +603,15 @@ async function openDiagram(xml) {
         }
       }
       return 0;
+    }
+
+    function findLoopProbability(array) {
+      for (let i = 0; i < array.length; i++) {
+        if (array[i].branch == 2) {
+          return array[i].probability;
+        }
+      }
+      return 0.5;
     }
 
   })();
