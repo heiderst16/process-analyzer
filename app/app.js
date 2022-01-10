@@ -22,7 +22,6 @@ const { default: Serializer, TypeResolver } = require('moddle-context-serializer
 var container = $('#js-drop-zone');
 var viewer = new BpmnViewer({
   container: $('#js-canvas'),
-  //height: 600
 });
 
 async function openDiagram(xml) {
@@ -973,3 +972,4 @@ if (!window.FileList || !window.FileReader) {
 } else {
   registerFileDrop(container, openDiagram);
 }
+
