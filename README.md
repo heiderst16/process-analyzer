@@ -4,6 +4,8 @@ This application is designed to calculate the uncertainty of business processes.
 The method and the formulas used were published by Jung, Chin and Cardoso in their paper "An entropy-based uncertainty measure of process models", which was published in the journal "Information Processing Letters" in 2011.
 Please refer to the paper if information about the method and the formulas are required.
 
+![](/resources/application.png)
+
 ## Installing and executing the ProcessAnalyzer
 
 This application requires Node.js and npm (node package manager) to be installed on your machine.
