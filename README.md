@@ -4,7 +4,7 @@ This application is designed to calculate the uncertainty of business processes.
 The method and the formulas used were published by Jung, Chin and Cardoso in their paper "An entropy-based uncertainty measure of process models", which was published in the journal "Information Processing Letters" in 2011.
 Please refer to the paper if information about the method and the formulas are required.
 
-![](/resources/application.png)
+![](/resources/application.PNG)
 
 ## Installing and executing the ProcessAnalyzer
 
@@ -37,3 +37,18 @@ In order to calculate the uncertainty of a business process, it is required to c
 If a business process model exists, it can be calculated by the application by dragging the .bpmn file into the browser. The application will automatically visualize the process and its uncertainty.
 
 If a new process should be calculated, the application can be reset simply by refreshing the browser.
+
+#### An example process has been provided in the resources folder.
+
+## Important Notes
+
+In order to calculate a business process, the id of the start element is required to be "start" as the following screenshot demonstrates:
+
+![](/resources/start.PNG)
+
+Probabilities of outgoing branches are defined by adding "_x.x_" in front of the id of the sequence. Where "x.x" is the desired probability as a decimal number. An example for this is shown in the following screenshot:
+
+![](/resources/probabilities.PNG)
+
+
+### This application is a proof of concept and not ready for the practical use
